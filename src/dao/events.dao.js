@@ -31,3 +31,50 @@ export const updateEvent = async (id, eventData) => {
 export const deleteEvent = async (id) => {
     return await Event.findByIdAndDelete(id);
 };
+
+// Reservar entradas si existe capacidad suficiente
+export const reserveTickets = async (eventId, quantity, session) => {
+    return await Event.findOneAndUpdate(
+        {
+            _id: eventId,
+            status: 'published',
+            $expr: {
+                $lte: [
+                    {
+                        $add: [
+                            { $ifNull: ['$reservedTickets', 0] },
+                            quantity
+                        ]
+                    },
+                    '$capacity'
+                ]
+            }
+        },
+        {
+            $inc: { reservedTickets: quantity }
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session
+        }
+    );
+};
+
+// Liberar entradas reservadas de un evento
+export const releaseTickets = async (eventId, quantity, session) => {
+    return await Event.findOneAndUpdate(
+        {
+            _id: eventId,
+            reservedTickets: { $gte: quantity }
+        },
+        {
+            $inc: { reservedTickets: -quantity }
+        },
+        {
+            returnDocument: 'after',
+            runValidators: true,
+            session
+        }
+    );
+};

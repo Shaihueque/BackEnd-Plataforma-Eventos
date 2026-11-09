@@ -3,6 +3,13 @@ node_modules/
 
 # Variables de entorno
 .env
+.env.*
+!.env.example
+
+# Pruebas automatizadas
+/tests/
+.env.test
+.env.test.*
 
 # Archivos del sistema
 .DS_Store

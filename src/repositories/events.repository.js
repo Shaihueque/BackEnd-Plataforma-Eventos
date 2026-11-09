@@ -24,3 +24,17 @@ export const updateEvent = async (id, eventData) => {
 export const deleteEvent = async (id) => {
     return await eventsDAO.deleteEvent(id);
 };
+
+// Reservar entradas de un evento
+export const reserveTickets = async (eventId, quantity, session) => {
+    return await eventsDAO.reserveTickets(eventId, quantity, session);
+};
+
+// Liberar entradas reservadas de un evento
+export const releaseTickets = async (eventId, quantity, session) => {
+    return await eventsDAO.releaseTickets(
+        eventId,
+        quantity,
+        session
+    );
+};

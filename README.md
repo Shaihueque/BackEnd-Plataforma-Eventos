@@ -27,7 +27,10 @@ Akun Eventos nace con la idea de facilitar ese encuentro: que los organizadores 
 - **Node.js:** entorno de ejecución de JavaScript.
 - **Express.js:** framework para el desarrollo de la API REST.
 - **JavaScript (ES Modules):** sistema de módulos utilizado en el proyecto.
+- **MongoDB Atlas:** base de datos MongoDB alojada en la nube.
+- **Mongoose:** ODM utilizado para definir modelos y realizar operaciones con MongoDB.
 - **dotenv:** gestión de variables de entorno.
+- **Node.js Test Runner:** ejecución de pruebas automatizadas.
 
 ## Requisitos previos
 
@@ -42,7 +45,7 @@ Para ejecutar el proyecto necesitás tener instalado:
 Clonar el repositorio:
 
 ```bash
-git clone URL_DEL_REPOSITORIO
+git clone https://github.com/Shaihueque/BackEnd-Plataforma-Eventos.git
 ```
 
 Ingresar al directorio:
@@ -59,9 +62,11 @@ npm install
 
 Crear un archivo `.env` en la raíz del proyecto, tomando como referencia `.env.example`.
 
-## Variables de entorno
+### Variables de entorno
 
-El proyecto utiliza las siguientes variables:
+El proyecto utiliza variables de entorno para configurar el servidor y la conexión a MongoDB Atlas.
+
+Crear un archivo `.env` en la raíz del proyecto tomando como referencia `.env.example`.
 
 ```env
 PORT=3000
@@ -70,7 +75,10 @@ MONGO_URL=
 JWT_SECRET=
 ```
 
-`MONGO_URL` y `JWT_SECRET` se encuentran declaradas para la configuración del entorno del proyecto.
+- **PORT:** puerto en el que se ejecuta el servidor.
+- **NODE_ENV:** entorno de ejecución de la aplicación.
+- **MONGO_URL:** cadena de conexión a MongoDB Atlas, incluyendo el nombre de la base de datos.
+- **JWT_SECRET:** variable reservada para la futura implementación de autenticación mediante JWT.
 
 ## Ejecución
 
@@ -137,6 +145,8 @@ plataforma-eventos/
 │   ├── server.js
 │   │
 │   ├── config/
+│   │   ├── database.config.js
+│   │   └── env.config.js
 │   │
 │   ├── controllers/
 │   │   ├── health.controller.js
@@ -145,7 +155,8 @@ plataforma-eventos/
 │   │
 │   ├── models/
 │   │   ├── User.js
-│   │   └── Event.js
+│   │   ├── Event.js
+│   │   └── Inscription.js
 │   │
 │   ├── routes/
 │   │   ├── health.router.js
@@ -153,12 +164,24 @@ plataforma-eventos/
 │   │   └── sessions.router.js
 │   │
 │   ├── services/
+│   │   ├── users.service.js
+│   │   ├── events.service.js
+│   │   └── inscriptions.service.js
+│   │
 │   ├── repositories/
+│   │   ├── users.repository.js
+│   │   ├── events.repository.js
+│   │   └── inscriptions.repository.js
+│   │
 │   ├── dao/
+│   │   ├── users.dao.js
+│   │   ├── events.dao.js
+│   │   └── inscriptions.dao.js
+│   │
 │   ├── middlewares/
 │   └── utils/
 │
-├── .env
+│
 ├── .env.example
 ├── .gitignore
 ├── package.json
@@ -184,7 +207,3 @@ El proyecto utiliza una estructura modular que separa las responsabilidades de l
 Proyecto desarrollado por **Julian Jara Aguirre**.
 
 ---
-
-**Akun Eventos**
-
-*Que cada persona
