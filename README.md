@@ -297,7 +297,12 @@ plataforma-eventos/
 │   │   └── inscriptions.dao.js
 │   │
 │   ├── middlewares/
+│   │   ├── errorHandler.middleware.js
+│   │   └── notFound.middleware.js
+│   │
 │   └── utils/
+│       ├── AppError.js
+│       └── password.utils.js
 │
 ├── .env.example
 ├── .gitignore
