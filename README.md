@@ -304,6 +304,10 @@ plataforma-eventos/
 │       ├── AppError.js
 │       └── password.utils.js
 │
+├── tests/
+│   ├── inscriptions.test.js
+│   └── transactions.test.js
+│
 ├── .env.example
 ├── .gitignore
 ├── package.json

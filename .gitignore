@@ -7,7 +7,6 @@ node_modules/
 !.env.example
 
 # Pruebas automatizadas
-/tests/
 .env.test
 .env.test.*
 
