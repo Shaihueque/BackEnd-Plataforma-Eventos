@@ -1,6 +1,8 @@
 
 import mongoose from 'mongoose';
 
+import { AppError } from '../utils/AppError.js';
+
 import * as inscriptionsRepository from '../repositories/inscriptions.repository.js';
 import * as eventsRepository from '../repositories/events.repository.js';
 import * as usersRepository from '../repositories/users.repository.js';
@@ -27,10 +29,11 @@ export const createInscription = async (inscriptionData) => {
     if (
         !mongoose.isValidObjectId(user) ||
         !mongoose.isValidObjectId(event)
-    ) {
-        return {
-            error: 'El identificador del usuario o del evento no es válido'
-        };
+    ){
+        throw new AppError(
+            'El identificador del usuario o del evento no es válido',
+            400
+        );
     }
 
     // Validar la cantidad de entradas
@@ -38,35 +41,39 @@ export const createInscription = async (inscriptionData) => {
         !Number.isInteger(quantity) ||
         quantity < 1 ||
         quantity > 4
-    ) {
-        return {
-            error: 'La cantidad de entradas debe ser un número entero entre 1 y 4'
-        };
+    ){
+        throw new AppError(
+            'La cantidad de entradas debe ser un número entero entre 1 y 4',
+            400
+        );
     }
 
     // Verificar que el usuario exista
     const existingUser = await usersRepository.getUserById(user);
 
     if (!existingUser) {
-        return {
-            error: 'El usuario no existe'
-        };
+        throw new AppError(
+            'El usuario no existe',
+            404
+        );
     }
 
     // Verificar que el evento exista
     const existingEvent = await eventsRepository.getEventById(event);
 
     if (!existingEvent) {
-        return {
-            error: 'El evento no existe'
-        };
+        throw new AppError(
+            'El evento no existe',
+            404
+        );
     }
 
     // Verificar que el evento esté publicado
     if (existingEvent.status !== 'published') {
-        return {
-            error: 'El evento no está disponible para inscripciones'
-        };
+        throw new AppError(
+            'El evento no está disponible para inscripciones',
+            409
+        );
     }
 
     // Iniciar una sesión de MongoDB
@@ -91,10 +98,10 @@ export const createInscription = async (inscriptionData) => {
                 existingInscription &&
                 existingInscription.status !== 'cancelled'
             ) {
-                result = {
-                    error: 'El usuario ya tiene una inscripción activa para este evento'
-                };
-                return;
+                throw new AppError(
+                    'El usuario ya tiene una inscripción activa para este evento',
+                    409
+                );
             }
 
             // Reservar entradas de forma atómica
@@ -105,10 +112,10 @@ export const createInscription = async (inscriptionData) => {
             );
 
             if (!updatedEvent) {
-                result = {
-                    error: 'No hay suficientes entradas disponibles para este evento'
-                };
-                return;
+                throw new AppError(
+                    'No hay suficientes entradas disponibles para este evento',
+                    409
+                );
             }
 
             // Reactivar una inscripción cancelada
@@ -146,18 +153,27 @@ export const createInscription = async (inscriptionData) => {
         return result;
 
     } catch (error) {
-        console.error('Error al crear la inscripción:', error);
-
-        // Controlar inscripciones duplicadas
-        if (error.code === 11000) {
-            return {
-                error: 'El usuario ya tiene una inscripción para este evento'
-            };
+    // Propagar los errores controlados
+        if (error instanceof AppError) {
+            throw error;
         }
 
-        return {
-            error: 'Ocurrió un error al procesar la inscripción'
-        };
+        // Controlar inscripciones duplicadas en MongoDB
+        if (error.code === 11000) {
+            throw new AppError(
+                'El usuario ya tiene una inscripción para este evento',
+                409
+            );
+        }
+
+        // Registrar los errores inesperados
+        console.error('Error al crear la inscripción:', error);
+
+        // Propagar un error interno al middleware global
+        throw new AppError(
+            'Ocurrió un error al procesar la inscripción',
+            500
+        );
 
     } finally {
         await session.endSession();
@@ -169,9 +185,10 @@ export const cancelInscription = async (id) => {
 
     // Validar el identificador
     if (!mongoose.isValidObjectId(id)) {
-        return {
-            error: 'El identificador de la inscripción no es válido'
-        };
+        throw new AppError(
+            'El identificador de la inscripción no es válido',
+            400
+        );
     }
 
     // Iniciar una sesión de MongoDB
@@ -191,18 +208,18 @@ export const cancelInscription = async (id) => {
                 );
 
             if (!inscription) {
-                result = {
-                    error: 'La inscripción no existe'
-                };
-                return;
+                throw new AppError(
+                    'La inscripción no existe',
+                    404
+                );
             }
 
             // Evitar cancelar una inscripción dos veces
             if (inscription.status === 'cancelled') {
-                result = {
-                    error: 'La inscripción ya se encuentra cancelada'
-                };
-                return;
+                throw new AppError(
+                    'La inscripción ya se encuentra cancelada',
+                    409
+                );
             }
 
             // Cambiar el estado a cancelled
@@ -237,13 +254,22 @@ export const cancelInscription = async (id) => {
         return result;
 
     } catch (error) {
+    // Propagar los errores controlados
+        if (error instanceof AppError) {
+            throw error;
+        }
+
+    // Registrar los errores inesperados
         console.error('Error al cancelar la inscripción:', error);
 
-        return {
-            error: 'Ocurrió un error al cancelar la inscripción'
-        };
+    // Propagar el error al middleware global
+        throw new AppError(
+            'Ocurrió un error al cancelar la inscripción',
+            500
+        );
 
     } finally {
+        // Cerrar la sesión de MongoDB
         await session.endSession();
     }
 };

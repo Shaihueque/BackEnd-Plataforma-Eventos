@@ -1,4 +1,3 @@
-
 import User from '../models/User.js';
 
 // Obtener todos los usuarios
