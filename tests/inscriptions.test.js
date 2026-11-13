@@ -170,16 +170,18 @@ test('No permite inscripciones duplicadas al mismo evento', {
         assert.equal(firstResult.error, undefined);
 
         // Segundo intento con el mismo usuario y evento
-        const secondResult = await createInscription({
-            user: user._id,
-            event: event._id,
-            quantity: 2
-        });
-
         // Debe rechazar la inscripción duplicada
-        assert.equal(
-            secondResult.error,
-            'El usuario ya tiene una inscripción activa para este evento'
+        await assert.rejects(
+            () => createInscription({
+                user: user._id,
+                event: event._id,
+                quantity: 2
+            }),
+            {
+                name: 'AppError',
+                message: 'El usuario ya tiene una inscripción activa para este evento',
+                statusCode: 409
+            }
         );
 
         // Verificar que exista una sola inscripción
@@ -289,16 +291,19 @@ test('No permite superar la capacidad del evento', {
 
         assert.equal(firstResult.error, undefined);
 
-        // Segundo usuario intenta reservar otras 2
-        const secondResult = await createInscription({
-            user: user2._id,
-            event: event._id,
-            quantity: 2
-        });
-
-        assert.equal(
-            secondResult.error,
-            'No hay suficientes entradas disponibles para este evento'
+        // Segundo usuario intenta reservar otras 2 entradas
+        // Debe rechazar la operación por falta de capacidad
+        await assert.rejects(
+            () => createInscription({
+                user: user2._id,
+                event: event._id,
+                quantity: 2
+            }),
+            {
+                name: 'AppError',
+                message: 'No hay suficientes entradas disponibles para este evento',
+                statusCode: 409
+            }
         );
 
         // La reserva inicial debe mantenerse
