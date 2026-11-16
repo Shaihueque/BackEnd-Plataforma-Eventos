@@ -97,6 +97,55 @@ npm start
 
 Por defecto, la aplicación utiliza el puerto `3000`.
 
+### Pruebas automatizadas
+
+El proyecto incluye pruebas automatizadas desarrolladas con **Node.js Test Runner** para verificar el registro seguro de usuarios, las inscripciones y las transacciones de MongoDB.
+
+#### Configuración del entorno de pruebas
+
+Antes de ejecutar las pruebas, crear un archivo `.env.test` en la raíz del proyecto utilizando como referencia `.env.test.example`.
+
+En Git Bash:
+
+```bash
+cp .env.test.example .env.test
+```
+
+Configurar las variables de entorno con los valores correspondientes:
+
+```env
+NODE_ENV=test
+PORT=3001
+MONGO_URL=mongodb+srv://USUARIO:CONTRASENA@CLUSTER.mongodb.net/akun_eventos_test
+JWT_SECRET=clave_de_pruebas_reemplazar
+```
+
+La variable `MONGO_URL` debe contener una cadena de conexión válida a MongoDB Atlas y apuntar exclusivamente a la base de datos `akun_eventos_test`.
+
+**Importante:** las pruebas crean y eliminan documentos temporales. No deben ejecutarse utilizando la base de datos de desarrollo o producción.
+
+El archivo `.env.test` contiene configuración privada y está excluido del repositorio mediante `.gitignore`. Únicamente se publica `.env.test.example` como plantilla, sin credenciales reales.
+
+#### Ejecutar las pruebas
+
+Desde la raíz del proyecto:
+
+```bash
+npm test
+```
+
+Este comando ejecuta los archivos de pruebas ubicados en `tests/`, utilizando las variables definidas en `.env.test`.
+
+#### Pruebas disponibles
+
+- `register.test.js`: verifica el registro exitoso, la normalización del email, la protección de contraseñas con bcrypt, el rol predeterminado y los errores HTTP `400` y `409`.
+- `inscriptions.test.js`: comprueba las reglas de inscripción, capacidad, cancelación, reactivación y reservas simultáneas.
+- `transactions.test.js`: verifica el funcionamiento de las transacciones de MongoDB.
+
+Las pruebas utilizan una base de datos independiente y eliminan los documentos temporales que generan.
+
+En la última ejecución local se obtuvieron **13 pruebas aprobadas y 0 fallidas**.
+
 ## Endpoints disponibles
 
 Actualmente, la API cuenta con los siguientes endpoints:
@@ -164,6 +213,16 @@ La solicitud debe enviarse utilizando el formato JSON.
 - `last_name`: apellido del usuario.
 - `email`: correo electrónico del usuario.
 - `password`: contraseña con un mínimo de 8 caracteres.
+
+**Formato de los campos:**
+
+El endpoint `POST /api/sessions/register` recibe los campos `first_name` y `last_name` utilizando la convención **snake_case**.
+
+Internamente, el modelo `User` de Mongoose utiliza `firstName` y `lastName`, siguiendo la convención **camelCase**.
+
+La conversión se realiza en la capa de servicios antes de guardar el usuario en MongoDB.
+
+Por lo tanto, las solicitudes enviadas desde Postman u otro cliente deben utilizar `first_name` y `last_name`, tal como se muestra en el ejemplo anterior.
 
 #### Validaciones implementadas
 
@@ -269,7 +328,8 @@ plataforma-eventos/
 │   ├── controllers/
 │   │   ├── health.controller.js
 │   │   ├── events.controller.js
-│   │   └── sessions.controller.js
+│   │   ├── sessions.controller.js
+│   │   └── inscriptions.controller.js
 │   │
 │   ├── models/
 │   │   ├── User.js
@@ -279,7 +339,8 @@ plataforma-eventos/
 │   ├── routes/
 │   │   ├── health.router.js
 │   │   ├── events.router.js
-│   │   └── sessions.router.js
+│   │   ├── sessions.router.js
+│   │   └── inscriptions.router.js
 │   │
 │   ├── services/
 │   │   ├── users.service.js
@@ -306,9 +367,11 @@ plataforma-eventos/
 │
 ├── tests/
 │   ├── inscriptions.test.js
+│   ├── register.test.js
 │   └── transactions.test.js
 │
 ├── .env.example
+├── .env.test.example
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
