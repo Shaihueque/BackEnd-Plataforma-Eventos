@@ -123,12 +123,12 @@ El proyecto utiliza una estructura modular que separa las responsabilidades de l
 
 Actualmente, la API cuenta con los siguientes endpoints:
 
-\| Método | Endpoint | Descripción |
-\|---|---|---|
-\| GET | `/api/health` | Verifica el estado del servidor. |
-\| GET | `/api/events` | Consulta inicial de eventos. |
-\| GET | `/api/sessions` | Ruta inicial del recurso de sesiones. |
-\| POST | `/api/sessions/register` | Registra un nuevo usuario con validación de datos y contraseña protegida mediante bcrypt. |
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/health` | Verifica el estado del servidor. |
+| GET | `/api/events` | Consulta inicial de eventos. |
+| GET | `/api/sessions` | Ruta inicial del recurso de sesiones. |
+| POST | `/api/sessions/register` | Registra un nuevo usuario con validación de datos y contraseña protegida mediante bcrypt. |
 | POST | `/api/sessions/login` | Inicia sesión y establece la cookie JWT. |
 | GET | `/api/sessions/current` | Consulta el usuario autenticado mediante una cookie JWT válida. |
 | POST | `/api/sessions/logout` | Cierra la sesión y elimina la cookie del cliente. |
@@ -253,13 +253,13 @@ Cuando el registro se realiza correctamente, el servidor responde con el código
 
 El endpoint utiliza un middleware global para gestionar los errores y devolver respuestas HTTP consistentes.
 
-\| Código HTTP | Situación | Mensaje |
-\|---|---|---|
-\| 400 | Faltan campos obligatorios | Faltan campos obligatorios |
-\| 400 | Formato de email incorrecto | El formato del correo electrónico no es válido |
-\| 400 | Contraseña demasiado corta | La contraseña debe tener al menos 8 caracteres |
-\| 409 | Email previamente registrado | El email ya está registrado |
-\| 500 | Error interno del servidor | Mensaje genérico de error interno |
+| Código HTTP | Situación | Mensaje |
+|---|---|---|
+| 400 | Faltan campos obligatorios | Faltan campos obligatorios |
+| 400 | Formato de email incorrecto | El formato del correo electrónico no es válido |
+| 400 | Contraseña demasiado corta | La contraseña debe tener al menos 8 caracteres |
+| 409 | Email previamente registrado | El email ya está registrado |
+| 500 | Error interno del servidor | Mensaje genérico de error interno |
 
 **Ejemplo de respuesta con error:**
 
@@ -287,14 +287,14 @@ El registro respeta la arquitectura por capas utilizada en el proyecto:
 
 Se realizaron pruebas manuales para verificar el funcionamiento del endpoint:
 
-\| Prueba | Resultado |
-\|---|---|
-\| Registro con datos válidos | 201 Created |
-\| Registro con campos faltantes | 400 Bad Request |
-\| Registro con email inválido | 400 Bad Request |
-\| Registro con contraseña de menos de 8 caracteres | 400 Bad Request |
-\| Registro con email duplicado | 409 Conflict |
-\| Intento de asignar el rol `admin` | 201 Created, con rol `user` |
+| Prueba | Resultado |
+|---|---|
+| Registro con datos válidos | 201 Created |
+| Registro con campos faltantes | 400 Bad Request |
+| Registro con email inválido | 400 Bad Request |
+| Registro con contraseña de menos de 8 caracteres | 400 Bad Request |
+| Registro con email duplicado | 409 Conflict |
+| Intento de asignar el rol `admin` | 201 Created, con rol `user` |
 
 También se verificó que la respuesta exitosa no exponga la contraseña del usuario.
 
@@ -317,11 +317,11 @@ JWT_EXPIRES_IN=1h
 
 ### Nuevos endpoints de sesiones
 
-\| Método | Endpoint | Descripción |
-\|---|---|---|
-\| POST | `/api/sessions/login` | Verifica las credenciales y establece la cookie JWT. |
-\| GET | `/api/sessions/current` | Devuelve los datos del usuario autenticado; requiere una cookie JWT válida. |
-\| POST | `/api/sessions/logout` | Ordena al cliente eliminar la cookie de autenticación. |
+| Método | Endpoint | Descripción |
+|---|---|---|
+| POST | `/api/sessions/login` | Verifica las credenciales y establece la cookie JWT. |
+| GET | `/api/sessions/current` | Devuelve los datos del usuario autenticado; requiere una cookie JWT válida. |
+| POST | `/api/sessions/logout` | Ordena al cliente eliminar la cookie de autenticación. |
 
 #### Iniciar sesión
 
