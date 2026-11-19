@@ -1,6 +1,5 @@
 // Middleware centralizado para manejar errores
 export const errorHandler = (err, req, res, next) => {
-    console.error('Error en la aplicación:', err);
 
     // Evitar responder nuevamente si ya se enviaron los encabezados
     if (res.headersSent) {
@@ -35,6 +34,11 @@ export const errorHandler = (err, req, res, next) => {
     if (err.code === 11000) {
         statusCode = 409;
         message = 'Ya existe un registro con esos datos';
+    }
+
+    // Registrar únicamente los errores inesperados
+    if (statusCode >= 500) {
+        console.error('Error interno en la aplicación:', err);
     }
 
     return res.status(statusCode).json({

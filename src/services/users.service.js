@@ -1,6 +1,7 @@
 import * as usersRepository from '../repositories/users.repository.js';
 import { AppError } from '../utils/AppError.js';
-import { hashPassword } from '../utils/password.utils.js';
+import { hashPassword, comparePassword } from '../utils/password.utils.js';
+import { generateToken } from '../utils/jwt.js';
 
 // Registrar un nuevo usuario
 export const registerUser = async (userData) => {
@@ -83,4 +84,54 @@ export const registerUser = async (userData) => {
         email: newUser.email,
         role: newUser.role
     };
+};
+
+// Iniciar sesión de un usuario
+export const loginUser = async (userData) => {
+    // Obtener las credenciales enviadas por el cliente
+    const { email, password } = userData ?? {};
+
+    // Validar que las credenciales sean cadenas no vacías
+    if (
+        typeof email !== 'string' ||
+        !email.trim() ||
+        typeof password !== 'string' ||
+        !password
+    ) {
+        throw new AppError('Credenciales inválidas', 401);
+    }
+
+    // Normalizar el correo electrónico
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Buscar el usuario en MongoDB
+    const user = await usersRepository.getUserByEmail(normalizedEmail);
+
+    // Verificar que el usuario exista
+    if (!user) {
+        throw new AppError('Credenciales inválidas', 401);
+    }
+
+    // Comparar la contraseña con el hash almacenado
+    const isValidPassword = await comparePassword(
+        password,
+        user.password
+    );
+
+    // Rechazar una contraseña incorrecta
+    if (!isValidPassword) {
+        throw new AppError('Credenciales inválidas', 401);
+    }
+
+    // Preparar únicamente los datos necesarios para el JWT
+    const userPayload = {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role
+    };
+
+    // Generar el token de autenticación
+    const token = generateToken(userPayload);
+
+    return token;
 };

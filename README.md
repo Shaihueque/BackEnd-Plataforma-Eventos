@@ -30,6 +30,8 @@ Akun Eventos nace con la idea de facilitar ese encuentro: que los organizadores 
 - **MongoDB Atlas:** base de datos MongoDB alojada en la nube.
 - **Mongoose:** ODM utilizado para definir modelos y realizar operaciones con MongoDB.
 - **bcrypt:** biblioteca utilizada para generar hashes seguros de las contraseñas de los usuarios.
+- **jsonwebtoken:** biblioteca utilizada para generar y verificar tokens JWT.
+- **cookie-parser:** middleware para interpretar cookies de las solicitudes HTTP.
 - **dotenv:** gestión de variables de entorno.
 - **Node.js Test Runner:** ejecución de pruebas automatizadas.
 
@@ -138,13 +140,14 @@ Este comando ejecuta los archivos de pruebas ubicados en `tests/`, utilizando la
 
 #### Pruebas disponibles
 
+- `auth.test.js`: verifica el inicio de sesión con JWT, la cookie de autenticación, el acceso a `/current`, el cierre de sesión y el rechazo de credenciales incorrectas, tokens inválidos y expirados.
 - `register.test.js`: verifica el registro exitoso, la normalización del email, la protección de contraseñas con bcrypt, el rol predeterminado y los errores HTTP `400` y `409`.
 - `inscriptions.test.js`: comprueba las reglas de inscripción, capacidad, cancelación, reactivación y reservas simultáneas.
 - `transactions.test.js`: verifica el funcionamiento de las transacciones de MongoDB.
 
 Las pruebas utilizan una base de datos independiente y eliminan los documentos temporales que generan.
 
-En la última ejecución local se obtuvieron **13 pruebas aprobadas y 0 fallidas**.
+En la última ejecución local de la suite completa se obtuvieron **22 pruebas aprobadas y 0 fallidas** (9 de autenticación, 6 de registro, 6 de inscripciones y 1 de transacciones).
 
 ## Endpoints disponibles
 
@@ -358,14 +361,17 @@ plataforma-eventos/
 │   │   └── inscriptions.dao.js
 │   │
 │   ├── middlewares/
+│   │   ├── auth.middleware.js
 │   │   ├── errorHandler.middleware.js
 │   │   └── notFound.middleware.js
 │   │
 │   └── utils/
 │       ├── AppError.js
+│       ├── jwt.js
 │       └── password.utils.js
 │
 ├── tests/
+│   ├── auth.test.js
 │   ├── inscriptions.test.js
 │   ├── register.test.js
 │   └── transactions.test.js
@@ -390,6 +396,125 @@ El proyecto utiliza una estructura modular que separa las responsabilidades de l
 - **Models:** definición de las entidades principales del sistema.
 - **Middlewares:** procesamiento y validación de solicitudes.
 - **Config:** configuración general de la aplicación.
+
+## Autenticación de usuarios con JWT
+
+La plataforma incorpora autenticación mediante JSON Web Tokens (JWT). El inicio de sesión verifica las credenciales del usuario registrado y, si son correctas, genera un token firmado que contiene únicamente `id`, `email` y `role`. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con una duración de una hora y con `secure` habilitado en producción.
+
+### Configuración adicional de autenticación
+
+Además de las variables de entorno ya documentadas, la autenticación utiliza:
+
+```env
+JWT_SECRET=REEMPLAZAR_POR_UNA_CLAVE_SEGURA
+JWT_EXPIRES_IN=1h
+```
+
+`JWT_SECRET` es obligatorio para firmar y verificar tokens. `JWT_EXPIRES_IN` configura la duración del JWT y tiene el valor predeterminado `1h`. Los archivos `.env` y `.env.test` deben mantenerse fuera del repositorio. Para pruebas, se utiliza la configuración independiente de `.env.test` y la base de datos `akun_eventos_test`.
+
+### Nuevos endpoints de sesiones
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| POST | `/api/sessions/login` | Verifica las credenciales y establece la cookie JWT. |
+| GET | `/api/sessions/current` | Devuelve los datos del usuario autenticado; requiere una cookie JWT válida. |
+| POST | `/api/sessions/logout` | Ordena al cliente eliminar la cookie de autenticación. |
+
+#### Iniciar sesión
+
+**`POST /api/sessions/login`**
+
+Ejemplo de solicitud JSON:
+
+```json
+{
+  "email": "ana@mail.com",
+  "password": "Secreta123"
+}
+```
+
+Respuesta exitosa (`200 OK`):
+
+```json
+{
+  "status": "success",
+  "message": "Login correcto"
+}
+```
+
+La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo no existe o la contraseña es incorrecta, el servidor responde `401 Unauthorized` con el mismo mensaje genérico:
+
+```json
+{
+  "status": "error",
+  "message": "Credenciales inválidas"
+}
+```
+
+#### Consultar el usuario autenticado
+
+**`GET /api/sessions/current`**
+
+El cliente debe enviar la cookie `currentUser` recibida en el inicio de sesión. Ejemplo de respuesta exitosa (`200 OK`):
+
+```json
+{
+  "status": "success",
+  "payload": {
+    "id": "IDENTIFICADOR_DEL_USUARIO",
+    "email": "ana@mail.com",
+    "role": "user"
+  }
+}
+```
+
+La respuesta no incluye la contraseña ni su hash. Si la cookie falta, el token es inválido o ha expirado, responde `401 Unauthorized`:
+
+```json
+{
+  "status": "error",
+  "message": "No autenticado"
+}
+```
+
+#### Cerrar sesión
+
+**`POST /api/sessions/logout`**
+
+Respuesta exitosa (`200 OK`):
+
+```json
+{
+  "status": "success",
+  "message": "Sesión cerrada"
+}
+```
+
+El servidor envía una instrucción para borrar la cookie `currentUser` del cliente. Esto **no revoca por sí solo** un JWT que ya se haya copiado: el token sigue siendo criptográficamente válido hasta su vencimiento, salvo que se implemente un mecanismo adicional de revocación.
+
+El middleware de autenticación verifica la cookie y asigna los datos del token a `req.user`. La utilidad JWT centraliza la firma y verificación de tokens. El manejador global de errores registra las trazas de los errores HTTP `500` y superiores, evitando registros extensos para errores controlados como `401`.
+
+### Pruebas de autenticación
+
+El archivo `tests/auth.test.js` incorpora pruebas de integración que verifican:
+
+- Login correcto y generación de cookie JWT.
+- Acceso autorizado a `/current` con un token válido.
+- Rechazo de acceso sin cookie, con token inválido o expirado.
+- Logout y eliminación de la cookie en la respuesta.
+- Rechazo de contraseñas incorrectas y correos inexistentes, sin generar cookies.
+
+Para ejecutar únicamente las pruebas de autenticación:
+
+```bash
+node --env-file=.env.test --test tests/auth.test.js
+```
+
+Para ejecutar todas las pruebas:
+
+```bash
+npm test
+```
 
 ## Autor
 
