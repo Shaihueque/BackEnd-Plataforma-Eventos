@@ -1,5 +1,4 @@
-import * as usersService from '../services/users.service.js';
-import { verifyToken } from '../utils/jwt.js';
+import { generateToken, verifyToken } from '../utils/jwt.js';
 import {AUTH_COOKIE_NAME, authCookieOptions, getAuthCookieOptions} from '../config/cookie.config.js';
 
 // Obtener la ruta de sesiones
@@ -11,14 +10,11 @@ export const getSessions = (req, res) => {
 };
 
 // Registrar un nuevo usuario
-export const registerUser = async (req, res) => {
-    // Obtener los datos enviados por el cliente
-    const userData = req.body;
+export const registerUser = (req, res) => {
+    // Obtener el usuario registrado mediante Passport
+    const newUser = req.user;
 
-    // Registrar el usuario mediante el servicio
-    const newUser = await usersService.registerUser(userData);
-
-    // Devolver la respuesta
+    // Devolver la respuesta exitosa
     res.status(201).json({
         status: 'success',
         payload: newUser
@@ -26,12 +22,12 @@ export const registerUser = async (req, res) => {
 };
 
 // Iniciar sesión de un usuario
-export const loginUser = async (req, res) => {
-    // Obtener las credenciales enviadas por el cliente
-    const userData = req.body;
+export const loginUser = (req, res) => {
+    // Obtener los datos del usuario autenticado mediante Passport
+    const user = req.user;
 
-    // Validar las credenciales y generar el JWT mediante el servicio
-    const token = await usersService.loginUser(userData);
+    // Generar el token JWT
+    const token = generateToken(user);
 
     // Obtener los datos verificados del token
     const tokenPayload = verifyToken(token);
@@ -52,7 +48,7 @@ export const loginUser = async (req, res) => {
 
 // Obtener los datos del usuario autenticado
 export const currentUser = (req, res) => {
-    // Obtener los datos previamente validados por el middleware
+    // Obtener los datos del usuario autenticado mediante Passport
     const user = req.user;
 
     // Devolver únicamente la información pública del usuario

@@ -22,8 +22,7 @@ export const validateRegisterData = (userData) => {
         !isNonEmptyString(first_name) ||
         !isNonEmptyString(last_name) ||
         !isNonEmptyString(email) ||
-        typeof password !== 'string' ||
-        !password
+        !isNonEmptyString(password)
     ) {
         throw new AppError('Faltan campos obligatorios', 400);
     }
@@ -43,6 +42,14 @@ export const validateRegisterData = (userData) => {
     if (password.length < 8) {
         throw new AppError(
             'La contraseña debe tener al menos 8 caracteres',
+            400
+        );
+    }
+
+    // Validar la longitud máxima admitida por bcrypt
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+        throw new AppError(
+            'La contraseña no puede superar los 72 bytes',
             400
         );
     }

@@ -31,6 +31,9 @@ Akun Eventos nace con la idea de facilitar ese encuentro: que los organizadores 
 - **Mongoose:** ODM utilizado para definir modelos y realizar operaciones con MongoDB.
 - **bcrypt:** biblioteca utilizada para generar hashes seguros de las contraseñas de los usuarios.
 - **jsonwebtoken:** biblioteca utilizada para generar y verificar tokens JWT.
+- **Passport.js:** middleware de autenticación que centraliza la ejecución de estrategias.
+- **passport-local:** estrategias de registro e inicio de sesión mediante email y contraseña.
+- **passport-jwt:** estrategia de autenticación mediante JWT extraído de una cookie.
 - **cookie-parser:** middleware para interpretar cookies de las solicitudes HTTP.
 - **dotenv:** gestión de variables de entorno.
 - **CORS:** middleware para configurar el acceso desde otros orígenes.
@@ -46,7 +49,8 @@ plataforma-eventos/
 │   ├── config/
 │   │   ├── cookie.config.js
 │   │   ├── database.config.js
-│   │   └── env.config.js
+│   │   ├── env.config.js
+│   │   └── passport.config.js
 │   │
 │   ├── controllers/
 │   │   ├── health.controller.js
@@ -81,7 +85,7 @@ plataforma-eventos/
 │   │   └── inscriptions.dao.js
 │   │
 │   ├── middlewares/
-│   │   ├── auth.middleware.js
+│   │   ├── passport.middleware.js
 │   │   ├── errorHandler.middleware.js
 │   │   └── notFound.middleware.js
 │   │
@@ -112,8 +116,8 @@ El proyecto utiliza una estructura modular que separa las responsabilidades de l
 - **Repositories:** abstracción del acceso a los datos.
 - **DAO:** operaciones de acceso a la base de datos.
 - **Models:** definición de las entidades principales del sistema.
-- **Middlewares:** procesamiento y validación de solicitudes.
-- **Config:** configuración general de la aplicación, conexión a MongoDB y cookies de autenticación.
+- **Middlewares:** procesamiento y validación de solicitudes, ejecución de estrategias de Passport y manejo de errores.
+- **Config:** configuración general de la aplicación, conexión a MongoDB, cookies de autenticación y estrategias de Passport.
 - **Validations:** validación y normalización de los datos recibidos.
 - **Utils:** funciones reutilizables para contraseñas, JWT, errores personalizados y transacciones de MongoDB.
 
@@ -126,9 +130,9 @@ Actualmente, la API cuenta con los siguientes endpoints:
 | GET | `/api/health` | Verifica el estado del servidor. |
 | GET | `/api/events` | Consulta inicial de eventos. |
 | GET | `/api/sessions` | Ruta inicial del recurso de sesiones. |
-| POST | `/api/sessions/register` | Registra un nuevo usuario con validación de datos y contraseña protegida mediante bcrypt. |
-| POST | `/api/sessions/login` | Inicia sesión y establece la cookie JWT. |
-| GET | `/api/sessions/current` | Consulta el usuario autenticado mediante una cookie JWT válida. |
+| POST | `/api/sessions/register` | Registra un nuevo usuario mediante la estrategia `register` de Passport, con validación de datos y contraseña protegida mediante bcrypt. |
+| POST | `/api/sessions/login` | Inicia sesión mediante la estrategia `login` y establece la cookie JWT. |
+| GET | `/api/sessions/current` | Consulta el usuario autenticado mediante la estrategia `current` y una cookie JWT válida. |
 | POST | `/api/sessions/logout` | Cierra la sesión y elimina la cookie del cliente. |
 | GET | `/api/inscriptions` | Consulta todas las inscripciones. |
 | GET | `/api/inscriptions/:id` | Consulta una inscripción por su identificador. |
@@ -167,7 +171,7 @@ Actualmente, la API cuenta con los siguientes endpoints:
 
 ### Registro seguro de usuarios
 
-La plataforma permite registrar nuevos usuarios mediante un endpoint público que valida los datos recibidos, protege las contraseñas y almacena la información en MongoDB Atlas.
+La plataforma permite registrar nuevos usuarios mediante la estrategia `register` de Passport y un endpoint público que valida los datos recibidos, protege las contraseñas y almacena la información en MongoDB Atlas.
 
 **Endpoint:**
 
@@ -191,7 +195,7 @@ La solicitud debe enviarse utilizando el formato JSON.
 - `first_name`: nombre del usuario.
 - `last_name`: apellido del usuario.
 - `email`: correo electrónico del usuario.
-- `password`: contraseña con un mínimo de 8 caracteres.
+- `password`: contraseña con un mínimo de 8 caracteres y un máximo de 72 bytes en UTF-8; no puede estar compuesta únicamente por espacios.
 
 **Formato de los campos:**
 
@@ -211,6 +215,9 @@ El registro de usuarios incluye las siguientes validaciones:
 - Validación del formato del correo electrónico.
 - Normalización del email mediante eliminación de espacios exteriores y conversión a minúsculas.
 - Validación de una contraseña de al menos 8 caracteres.
+- Rechazo de contraseñas compuestas únicamente por espacios.
+- Límite máximo de 72 bytes en UTF-8 para evitar el truncamiento de contraseñas por bcrypt.
+- Eliminación de espacios exteriores en el nombre y apellido.
 - Verificación de correos electrónicos previamente registrados.
 - Prevención de duplicados mediante un índice único en MongoDB.
 - Asignación automática del rol `user`, sin permitir que el cliente establezca roles privilegiados.
@@ -220,6 +227,8 @@ El registro de usuarios incluye las siguientes validaciones:
 Las contraseñas se procesan utilizando la biblioteca `bcrypt` antes de almacenarse en MongoDB.
 
 El proceso de registro genera un hash de la contraseña mediante una función reutilizable ubicada en `src/utils/password.utils.js`.
+
+El hash se genera con un factor de coste de 10. El límite de 72 bytes se aplica a los nuevos registros; el inicio de sesión conserva la compatibilidad con usuarios existentes. Las contraseñas no se recortan ni se normalizan antes de generar el hash.
 
 La contraseña original nunca se almacena directamente en la base de datos mediante el endpoint de registro.
 
@@ -251,6 +260,7 @@ El endpoint utiliza un middleware global para gestionar los errores y devolver r
 | 400 | Faltan campos obligatorios | Faltan campos obligatorios |
 | 400 | Formato de email incorrecto | El formato del correo electrónico no es válido |
 | 400 | Contraseña demasiado corta | La contraseña debe tener al menos 8 caracteres |
+| 400 | Contraseña superior a 72 bytes | La contraseña no puede superar los 72 bytes |
 | 409 | Email previamente registrado | El email ya está registrado |
 | 500 | Error interno del servidor | Mensaje genérico de error interno |
 
@@ -267,12 +277,14 @@ El endpoint utiliza un middleware global para gestionar los errores y devolver r
 
 El registro respeta la arquitectura por capas utilizada en el proyecto:
 
-1. **Ruta:** recibe la solicitud `POST /api/sessions/register`.
-2. **Controlador:** obtiene los datos y genera la respuesta HTTP.
-3. **Servicio:** delega las validaciones y la normalización en `users.validation.js`, genera el hash y aplica las reglas de negocio.
-4. **Repositorio:** abstrae las operaciones de acceso a los datos.
-5. **DAO:** ejecuta las operaciones mediante Mongoose.
-6. **Modelo:** define la estructura y las restricciones de los usuarios en MongoDB.
+1. **Ruta:** recibe la solicitud `POST /api/sessions/register` y delega la autenticación al middleware de Passport.
+2. **Middleware:** ejecuta `passportAuthenticate('register')` sin sesiones de servidor y gestiona los errores.
+3. **Estrategia:** `register`, definida en `passport.config.js` mediante `LocalStrategy`, delega el registro al servicio utilizando `req.body`.
+4. **Servicio:** delega las validaciones y la normalización en `users.validation.js`, genera el hash y aplica las reglas de negocio.
+5. **Repositorio:** abstrae las operaciones de acceso a los datos.
+6. **DAO:** ejecuta las operaciones mediante Mongoose.
+7. **Modelo:** define la estructura y las restricciones de los usuarios en MongoDB.
+8. **Controlador:** recibe los datos públicos en `req.user` y genera la respuesta HTTP 201.
 
 #### Pruebas realizadas con Postman
 
@@ -286,12 +298,35 @@ Se realizaron pruebas manuales para verificar el funcionamiento del endpoint:
 | Registro con contraseña de menos de 8 caracteres | 400 Bad Request |
 | Registro con email duplicado | 409 Conflict |
 | Intento de asignar el rol `admin` | 201 Created, con rol `user` |
+| Email con mayúsculas y espacios exteriores | 201 Created, email normalizado |
+| Credenciales enviadas únicamente por query | 400 Bad Request |
+| Contraseña compuesta únicamente por espacios | 400 Bad Request |
+| Contraseña de 73 bytes | 400 Bad Request |
+| Contraseña de exactamente 72 bytes | 201 Created |
 
 También se verificó que la respuesta exitosa no exponga la contraseña del usuario.
 
 La persistencia de los datos se realiza en MongoDB Atlas y las contraseñas generadas mediante el endpoint de registro se almacenan utilizando hashes de bcrypt.
 
-## Autenticación de usuarios con JWT
+## Autenticación de usuarios con Passport.js y JWT
+
+### Integración de Passport.js
+
+Passport se inicializa en `src/app.js` mediante `initializePassport()` y `passport.initialize()`, después de los middlewares de lectura de JSON y cookies y antes de las rutas. Las estrategias se definen de forma centralizada en `src/config/passport.config.js`.
+
+| Estrategia | Implementación | Responsabilidad |
+|---|---|---|
+| `register` | `LocalStrategy` | Delegar el registro seguro al servicio de usuarios. |
+| `login` | `LocalStrategy` | Delegar la validación de credenciales al servicio de usuarios. |
+| `current` | `JWTStrategy` | Extraer y verificar el JWT de la cookie `currentUser`. |
+
+El middleware reutilizable `src/middlewares/passport.middleware.js` ejecuta `passport.authenticate` con `session: false`, asigna el usuario a `req.user` mediante un callback personalizado y deriva los errores al manejador global con mensajes en español. No se utilizan sesiones de servidor ni `express-session`.
+
+Las estrategias locales utilizan los campos `email` y `password` y delegan únicamente los datos del cuerpo de la solicitud al servicio. La lógica de negocio permanece en `users.service.js`, sin duplicarse en las estrategias. El controlador de sesiones conserva la responsabilidad de generar las respuestas HTTP y, en el login, de firmar el JWT y establecer la cookie.
+
+La integración mantiene los endpoints, los códigos HTTP y las estructuras de respuesta existentes. La configuración centralizada permite incorporar en el futuro estrategias de proveedores externos, como Google o GitHub, sin modificar la inicialización de Passport en `app.js`. Estos proveedores todavía no están implementados.
+
+### Autenticación mediante JWT
 
 La plataforma incorpora autenticación mediante JSON Web Tokens (JWT). El inicio de sesión verifica las credenciales del usuario registrado y, si son correctas, genera un token firmado que contiene únicamente `id`, `email` y `role`. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con `path: /`, una expiración sincronizada con la del JWT (una hora por defecto) y con `secure` habilitado en producción. La configuración se centraliza en `src/config/cookie.config.js`. Los tokens se firman y verifican mediante HS256.
 
@@ -336,6 +371,8 @@ Respuesta exitosa (`200 OK`):
 }
 ```
 
+La estrategia `login` valida las credenciales mediante el servicio de usuarios, que consulta el repositorio y compara la contraseña con el hash almacenado utilizando bcrypt. El controlador recibe `req.user`, genera el JWT y configura la cookie con la expiración del token.
+
 La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo no existe o la contraseña es incorrecta, el servidor responde `401 Unauthorized` con el mismo mensaje genérico:
 
 ```json
@@ -349,7 +386,7 @@ La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo 
 
 **`GET /api/sessions/current`**
 
-El cliente debe enviar la cookie `currentUser` recibida en el inicio de sesión. Ejemplo de respuesta exitosa (`200 OK`):
+El cliente debe enviar la cookie `currentUser` recibida en el inicio de sesión. La estrategia `current` extrae el token exclusivamente de esa cookie, verifica su firma HS256 y su expiración, y comprueba que incluya un identificador y email no vacíos, un rol admitido y una expiración numérica finita. No acepta un token enviado únicamente mediante el encabezado `Authorization: Bearer`. No consulta MongoDB: los datos del usuario proceden del JWT, por lo que los cambios posteriores de rol no se reflejan hasta renovar el token. Ejemplo de respuesta exitosa (`200 OK`):
 
 ```json
 {
@@ -386,7 +423,7 @@ Respuesta exitosa (`200 OK`):
 
 El servidor envía una instrucción para borrar la cookie `currentUser` del cliente. Esto **no revoca por sí solo** un JWT que ya se haya copiado: el token sigue siendo criptográficamente válido hasta su vencimiento, salvo que se implemente un mecanismo adicional de revocación.
 
-El middleware de autenticación verifica la cookie y asigna los datos del token a `req.user`. La utilidad JWT centraliza la firma y verificación de tokens. El manejador global de errores registra las trazas de los errores HTTP `500` y superiores, evitando registros extensos para errores controlados como `401`.
+La estrategia `current` de Passport verifica el JWT de la cookie y el middleware de Passport asigna los datos públicos a `req.user`. El cierre de sesión conserva su controlador original y no requiere una estrategia de Passport. La utilidad JWT centraliza la firma y verificación de tokens. El manejador global de errores registra las trazas de los errores HTTP `500` y superiores, evitando registros extensos para errores controlados como `401`.
 
 ## Gestión de inscripciones
 
@@ -438,7 +475,7 @@ npm install
 
 ## Variables de entorno
 
-El proyecto utiliza variables de entorno para configurar el servidor y la conexión a MongoDB Atlas.
+El proyecto utiliza variables de entorno para configurar el servidor, la conexión a MongoDB Atlas y la autenticación JWT. Passport reutiliza las variables existentes, sin requerir nuevas credenciales de configuración.
 
 Crear un archivo `.env` en la raíz del proyecto tomando como referencia `.env.example`.
 
@@ -474,7 +511,7 @@ Por defecto, la aplicación utiliza el puerto `3000`.
 
 ## Verificación funcional con Postman
 
-Se realizaron verificaciones manuales de los endpoints existentes durante el desarrollo y las correcciones de la Pre-entrega 3.
+Se realizaron verificaciones manuales de los endpoints existentes durante el desarrollo.
 
 | Operación | Código HTTP esperado |
 |---|---|
@@ -489,6 +526,30 @@ Se realizaron verificaciones manuales de los endpoints existentes durante el des
 | Registro con correo duplicado | 409 Conflict |
 
 También se realizaron comprobaciones manuales de creación, cancelación y reactivación de inscripciones, así como del control de capacidad y la reserva y liberación de entradas.
+
+### Verificaciones
+
+Se realizaron pruebas manuales con Postman para comprobar la integración de Passport y la continuidad de la API.
+
+| Operación | Código HTTP obtenido |
+|---|---|
+| Registro válido mediante Passport | 201 Created |
+| Registro con email duplicado | 409 Conflict |
+| Registro con campos faltantes, email inválido o contraseña corta | 400 Bad Request |
+| Registro con contraseña de más de 72 bytes o solo espacios | 400 Bad Request |
+| Registro con contraseña de exactamente 72 bytes | 201 Created |
+| Login correcto, incluido un usuario registrado antes de los cambios | 200 OK |
+| Login con contraseña incorrecta, usuario inexistente o credenciales faltantes | 401 Unauthorized |
+| Current con cookie y JWT válidos | 200 OK |
+| Current sin cookie, con JWT manipulado o expirado | 401 Unauthorized |
+| Logout | 200 OK |
+| Current después del logout | 401 Unauthorized |
+| Consulta de eventos e inscripciones | 200 OK |
+
+Se confirmaron las respuestas de error en español para credenciales inválidas, email duplicado, campos obligatorios, email inválido, contraseña corta, contraseña superior a 72 bytes y ausencia de autenticación. Las consultas finales de salud, eventos e inscripciones fueron verificadas por su código HTTP.
+
+Para reproducir el flujo principal en Postman, registrar un usuario nuevo, iniciar sesión, comprobar la cookie `currentUser` y consultar `/api/sessions/current`. Luego ejecutar `/api/sessions/logout` y volver a consultar `/api/sessions/current`, que debe devolver 401.
+
 
 ## Autor
 

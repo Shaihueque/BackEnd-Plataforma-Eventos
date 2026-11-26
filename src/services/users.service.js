@@ -1,7 +1,6 @@
 import * as usersRepository from '../repositories/users.repository.js';
 import { AppError } from '../utils/AppError.js';
 import { hashPassword, comparePassword } from '../utils/password.utils.js';
-import { generateToken } from '../utils/jwt.js';
 import {validateRegisterData, validateLoginData} from '../validations/users.validation.js';
 
 // Registrar un nuevo usuario
@@ -75,13 +74,10 @@ export const loginUser = async (userData) => {
         throw new AppError('Credenciales inválidas', 401);
     }
 
-    // Preparar únicamente los datos necesarios para el JWT
-    const userPayload = {
+    // Devolver únicamente los datos necesarios del usuario autenticado
+    return {
         id: user._id.toString(),
         email: user.email,
         role: user.role
     };
-
-    // Generar y devolver el token de autenticación
-    return generateToken(userPayload);
 };
