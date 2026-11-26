@@ -169,7 +169,7 @@ Actualmente, la API cuenta con los siguientes endpoints:
 }
 ```
 
-### Registro seguro de usuarios
+## Registro seguro de usuarios
 
 La plataforma permite registrar nuevos usuarios mediante la estrategia `register` de Passport y un endpoint público que valida los datos recibidos, protege las contraseñas y almacena la información en MongoDB Atlas.
 
@@ -177,7 +177,7 @@ La plataforma permite registrar nuevos usuarios mediante la estrategia `register
 
 `POST /api/sessions/register`
 
-#### Datos requeridos
+### Datos requeridos
 
 La solicitud debe enviarse utilizando el formato JSON.
 
@@ -195,7 +195,7 @@ La solicitud debe enviarse utilizando el formato JSON.
 - `first_name`: nombre del usuario.
 - `last_name`: apellido del usuario.
 - `email`: correo electrónico del usuario.
-- `password`: contraseña con un mínimo de 8 caracteres y un máximo de 72 bytes en UTF-8; no puede estar compuesta únicamente por espacios.
+- `password`: contraseña del usuario. Sus restricciones se detallan en las validaciones.
 
 **Formato de los campos:**
 
@@ -205,9 +205,7 @@ Internamente, el modelo `User` de Mongoose utiliza `firstName` y `lastName`, sig
 
 La conversión se realiza en `src/validations/users.validation.js`, utilizado por la capa de servicios antes de guardar el usuario en MongoDB.
 
-Por lo tanto, las solicitudes enviadas desde Postman u otro cliente deben utilizar `first_name` y `last_name`, tal como se muestra en el ejemplo anterior.
-
-#### Validaciones implementadas
+### Validaciones implementadas
 
 El registro de usuarios incluye las siguientes validaciones:
 
@@ -222,7 +220,7 @@ El registro de usuarios incluye las siguientes validaciones:
 - Prevención de duplicados mediante un índice único en MongoDB.
 - Asignación automática del rol `user`, sin permitir que el cliente establezca roles privilegiados.
 
-#### Seguridad de las contraseñas
+### Seguridad de las contraseñas
 
 Las contraseñas se procesan utilizando la biblioteca `bcrypt` antes de almacenarse en MongoDB.
 
@@ -234,7 +232,7 @@ La contraseña original nunca se almacena directamente en la base de datos media
 
 Además, la respuesta del endpoint excluye tanto la contraseña original como su hash.
 
-#### Respuesta exitosa
+### Respuesta exitosa
 
 Cuando el registro se realiza correctamente, el servidor responde con el código HTTP `201 Created`.
 
@@ -251,9 +249,7 @@ Cuando el registro se realiza correctamente, el servidor responde con el código
 }
 ```
 
-#### Manejo de errores
-
-El endpoint utiliza un middleware global para gestionar los errores y devolver respuestas HTTP consistentes.
+### Manejo de errores del registro
 
 | Código HTTP | Situación | Mensaje |
 |---|---|---|
@@ -273,41 +269,6 @@ El endpoint utiliza un middleware global para gestionar los errores y devolver r
 }
 ```
 
-#### Arquitectura del registro
-
-El registro respeta la arquitectura por capas utilizada en el proyecto:
-
-1. **Ruta:** recibe la solicitud `POST /api/sessions/register` y delega la autenticación al middleware de Passport.
-2. **Middleware:** ejecuta `passportAuthenticate('register')` sin sesiones de servidor y gestiona los errores.
-3. **Estrategia:** `register`, definida en `passport.config.js` mediante `LocalStrategy`, delega el registro al servicio utilizando `req.body`.
-4. **Servicio:** delega las validaciones y la normalización en `users.validation.js`, genera el hash y aplica las reglas de negocio.
-5. **Repositorio:** abstrae las operaciones de acceso a los datos.
-6. **DAO:** ejecuta las operaciones mediante Mongoose.
-7. **Modelo:** define la estructura y las restricciones de los usuarios en MongoDB.
-8. **Controlador:** recibe los datos públicos en `req.user` y genera la respuesta HTTP 201.
-
-#### Pruebas realizadas con Postman
-
-Se realizaron pruebas manuales para verificar el funcionamiento del endpoint:
-
-| Prueba | Resultado |
-|---|---|
-| Registro con datos válidos | 201 Created |
-| Registro con campos faltantes | 400 Bad Request |
-| Registro con email inválido | 400 Bad Request |
-| Registro con contraseña de menos de 8 caracteres | 400 Bad Request |
-| Registro con email duplicado | 409 Conflict |
-| Intento de asignar el rol `admin` | 201 Created, con rol `user` |
-| Email con mayúsculas y espacios exteriores | 201 Created, email normalizado |
-| Credenciales enviadas únicamente por query | 400 Bad Request |
-| Contraseña compuesta únicamente por espacios | 400 Bad Request |
-| Contraseña de 73 bytes | 400 Bad Request |
-| Contraseña de exactamente 72 bytes | 201 Created |
-
-También se verificó que la respuesta exitosa no exponga la contraseña del usuario.
-
-La persistencia de los datos se realiza en MongoDB Atlas y las contraseñas generadas mediante el endpoint de registro se almacenan utilizando hashes de bcrypt.
-
 ## Autenticación de usuarios con Passport.js y JWT
 
 ### Integración de Passport.js
@@ -322,34 +283,15 @@ Passport se inicializa en `src/app.js` mediante `initializePassport()` y `passpo
 
 El middleware reutilizable `src/middlewares/passport.middleware.js` ejecuta `passport.authenticate` con `session: false`, asigna el usuario a `req.user` mediante un callback personalizado y deriva los errores al manejador global con mensajes en español. No se utilizan sesiones de servidor ni `express-session`.
 
-Las estrategias locales utilizan los campos `email` y `password` y delegan únicamente los datos del cuerpo de la solicitud al servicio. La lógica de negocio permanece en `users.service.js`, sin duplicarse en las estrategias. El controlador de sesiones conserva la responsabilidad de generar las respuestas HTTP y, en el login, de firmar el JWT y establecer la cookie.
+Las estrategias locales utilizan los campos `email` y `password` y delegan únicamente los datos del cuerpo de la solicitud al servicio. La lógica de negocio permanece en `users.service.js`, sin duplicarse en las estrategias. En el registro, el servicio valida los datos, genera el hash y persiste el usuario a través del repositorio, DAO y modelo; el controlador recibe los datos públicos en `req.user` y responde con HTTP 201. El controlador de sesiones conserva la responsabilidad de generar las respuestas HTTP y, en el login, de firmar el JWT y establecer la cookie.
 
 La integración mantiene los endpoints, los códigos HTTP y las estructuras de respuesta existentes. La configuración centralizada permite incorporar en el futuro estrategias de proveedores externos, como Google o GitHub, sin modificar la inicialización de Passport en `app.js`. Estos proveedores todavía no están implementados.
 
 ### Autenticación mediante JWT
 
-La plataforma incorpora autenticación mediante JSON Web Tokens (JWT). El inicio de sesión verifica las credenciales del usuario registrado y, si son correctas, genera un token firmado que contiene únicamente `id`, `email` y `role`. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con `path: /`, una expiración sincronizada con la del JWT (una hora por defecto) y con `secure` habilitado en producción. La configuración se centraliza en `src/config/cookie.config.js`. Los tokens se firman y verifican mediante HS256.
+El JWT contiene los datos `id`, `email` y `role`, además de las marcas temporales del token. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con `path: /`, una expiración sincronizada con la del JWT (una hora por defecto) y con `secure` habilitado en producción. La configuración se centraliza en `src/config/cookie.config.js`. La utilidad `src/utils/jwt.js` centraliza la firma y verificación mediante HS256.
 
-### Configuración de autenticación
-
-Además de las variables de entorno ya documentadas, la autenticación utiliza:
-
-```env
-JWT_SECRET=REEMPLAZAR_POR_UNA_CLAVE_SEGURA
-JWT_EXPIRES_IN=1h
-```
-
-`JWT_SECRET` es obligatorio para firmar y verificar tokens. `JWT_EXPIRES_IN` configura la duración del JWT y tiene el valor predeterminado `1h`. El archivo `.env` debe mantenerse fuera del repositorio.
-
-### Endpoints de autenticación
-
-| Método | Endpoint | Descripción |
-|---|---|---|
-| POST | `/api/sessions/login` | Verifica las credenciales y establece la cookie JWT. |
-| GET | `/api/sessions/current` | Devuelve los datos del usuario autenticado; requiere una cookie JWT válida. |
-| POST | `/api/sessions/logout` | Ordena al cliente eliminar la cookie de autenticación. |
-
-#### Iniciar sesión
+### Iniciar sesión
 
 **`POST /api/sessions/login`**
 
@@ -382,7 +324,7 @@ La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo 
 }
 ```
 
-#### Consultar el usuario autenticado
+### Consultar el usuario autenticado
 
 **`GET /api/sessions/current`**
 
@@ -408,7 +350,7 @@ La respuesta no incluye la contraseña ni su hash. Si la cookie falta, el token 
 }
 ```
 
-#### Cerrar sesión
+### Cerrar sesión
 
 **`POST /api/sessions/logout`**
 
@@ -423,7 +365,7 @@ Respuesta exitosa (`200 OK`):
 
 El servidor envía una instrucción para borrar la cookie `currentUser` del cliente. Esto **no revoca por sí solo** un JWT que ya se haya copiado: el token sigue siendo criptográficamente válido hasta su vencimiento, salvo que se implemente un mecanismo adicional de revocación.
 
-La estrategia `current` de Passport verifica el JWT de la cookie y el middleware de Passport asigna los datos públicos a `req.user`. El cierre de sesión conserva su controlador original y no requiere una estrategia de Passport. La utilidad JWT centraliza la firma y verificación de tokens. El manejador global de errores registra las trazas de los errores HTTP `500` y superiores, evitando registros extensos para errores controlados como `401`.
+El cierre de sesión conserva su controlador original y no requiere una estrategia de Passport.
 
 ## Gestión de inscripciones
 
@@ -443,7 +385,7 @@ Actualmente, las rutas de eventos e inscripciones no cuentan con autorización p
 
 La clase `AppError` permite generar errores personalizados con su código HTTP. El middleware `notFound` deriva las rutas inexistentes al manejador global `errorHandler`, que construye las respuestas de error.
 
-El manejador contempla errores de validación y conversión de Mongoose, registros duplicados y solicitudes con JSON mal formado. Los errores internos del servidor se registran en la terminal y devuelven un mensaje genérico al cliente.
+El manejador contempla errores de validación y conversión de Mongoose, registros duplicados y solicitudes con JSON mal formado. Los errores internos del servidor (HTTP 500 y superiores) se registran en la terminal y devuelven un mensaje genérico al cliente, evitando trazas extensas para errores controlados como 401.
 
 ## Requisitos previos
 
@@ -493,6 +435,8 @@ JWT_EXPIRES_IN=1h
 - **JWT_SECRET:** clave secreta utilizada para firmar y verificar los JWT.
 - **JWT_EXPIRES_IN:** duración de los tokens JWT (por defecto, `1h`).
 
+`JWT_SECRET` es obligatorio y debe ser una clave segura. El archivo `.env` debe mantenerse fuera del repositorio.
+
 ## Ejecución
 
 Iniciar el servidor en modo desarrollo:
@@ -511,45 +455,35 @@ Por defecto, la aplicación utiliza el puerto `3000`.
 
 ## Verificación funcional con Postman
 
-Se realizaron verificaciones manuales de los endpoints existentes durante el desarrollo.
+Se realizaron pruebas manuales durante el desarrollo y la integración de Passport.js.
 
-| Operación | Código HTTP esperado |
-|---|---|
-| Estado del servidor | 200 OK |
-| Registro válido | 201 Created |
-| Inicio de sesión y consulta del usuario autenticado | 200 OK |
-| Consulta de eventos e inscripciones | 200 OK |
-| Cierre de sesión | 200 OK |
-| Acceso a `/current` sin autenticación | 401 Unauthorized |
-| Solicitud con JSON mal formado | 400 Bad Request |
-| Ruta inexistente | 404 Not Found |
-| Registro con correo duplicado | 409 Conflict |
+| Módulo | Operación | Resultado HTTP |
+|---|---|---|
+| Registro | Datos válidos | 201 Created |
+| Registro | Email con mayúsculas y espacios exteriores | 201 Created, email normalizado |
+| Registro | Intento de asignar rol `admin` | 201 Created, rol `user` |
+| Registro | Campos faltantes, email inválido o contraseña corta | 400 Bad Request |
+| Registro | Contraseña de más de 72 bytes o solo espacios | 400 Bad Request |
+| Registro | Contraseña de exactamente 72 bytes | 201 Created |
+| Registro | Credenciales únicamente por query | 400 Bad Request |
+| Registro | Email duplicado | 409 Conflict |
+| Login | Credenciales válidas, incluido un usuario anterior a los cambios | 200 OK |
+| Login | Contraseña incorrecta, usuario inexistente o credenciales faltantes | 401 Unauthorized |
+| Current | Cookie y JWT válidos | 200 OK |
+| Current | Sin cookie, JWT manipulado o expirado | 401 Unauthorized |
+| Logout | Cierre de sesión | 200 OK |
+| Current | Después del logout | 401 Unauthorized |
+| API | Estado del servidor, consulta de eventos e inscripciones | 200 OK |
+| API | JSON mal formado | 400 Bad Request |
+| API | Ruta inexistente | 404 Not Found |
 
 También se realizaron comprobaciones manuales de creación, cancelación y reactivación de inscripciones, así como del control de capacidad y la reserva y liberación de entradas.
 
-### Verificaciones
+Se confirmaron los mensajes de error en español para las siete verificaciones finales de autenticación y registro. Las consultas finales de salud, eventos e inscripciones se verificaron por su código HTTP.
 
-Se realizaron pruebas manuales con Postman para comprobar la integración de Passport y la continuidad de la API.
+### Reproducción del flujo de autenticación
 
-| Operación | Código HTTP obtenido |
-|---|---|
-| Registro válido mediante Passport | 201 Created |
-| Registro con email duplicado | 409 Conflict |
-| Registro con campos faltantes, email inválido o contraseña corta | 400 Bad Request |
-| Registro con contraseña de más de 72 bytes o solo espacios | 400 Bad Request |
-| Registro con contraseña de exactamente 72 bytes | 201 Created |
-| Login correcto, incluido un usuario registrado antes de los cambios | 200 OK |
-| Login con contraseña incorrecta, usuario inexistente o credenciales faltantes | 401 Unauthorized |
-| Current con cookie y JWT válidos | 200 OK |
-| Current sin cookie, con JWT manipulado o expirado | 401 Unauthorized |
-| Logout | 200 OK |
-| Current después del logout | 401 Unauthorized |
-| Consulta de eventos e inscripciones | 200 OK |
-
-Se confirmaron las respuestas de error en español para credenciales inválidas, email duplicado, campos obligatorios, email inválido, contraseña corta, contraseña superior a 72 bytes y ausencia de autenticación. Las consultas finales de salud, eventos e inscripciones fueron verificadas por su código HTTP.
-
-Para reproducir el flujo principal en Postman, registrar un usuario nuevo, iniciar sesión, comprobar la cookie `currentUser` y consultar `/api/sessions/current`. Luego ejecutar `/api/sessions/logout` y volver a consultar `/api/sessions/current`, que debe devolver 401.
-
+En Postman, registrar un usuario nuevo, iniciar sesión, comprobar la cookie `currentUser` y consultar `/api/sessions/current`. Luego ejecutar `/api/sessions/logout` y volver a consultar `/api/sessions/current`, que debe devolver 401.
 
 ## Autor
 
