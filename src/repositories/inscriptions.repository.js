@@ -1,4 +1,3 @@
-
 import * as inscriptionsDAO from '../dao/inscriptions.dao.js';
 
 // Obtener todas las inscripciones

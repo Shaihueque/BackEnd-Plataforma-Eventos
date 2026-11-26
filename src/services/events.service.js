@@ -1,4 +1,3 @@
-
 import * as eventsRepository from '../repositories/events.repository.js';
 import mongoose from 'mongoose';
 

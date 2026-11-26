@@ -2,14 +2,21 @@
   "name": "plataforma-eventos",
   "version": "1.0.0",
   "description": "API REST para una plataforma de gestión de eventos y tickets",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --env-file=.env.test --test tests/*.test.js"
+    "dev": "node --watch src/server.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["akun-eventos",
+    "eventos",
+    "tickets",
+    "api-rest",
+    "nodejs",
+    "express",
+    "mongodb",
+    "mongoose",
+    "jwt"],
+  "author": "Julian Jara Aguirre",
   "license": "ISC",
   "type": "module",
   "dependencies": {

@@ -2,74 +2,39 @@ import * as usersRepository from '../repositories/users.repository.js';
 import { AppError } from '../utils/AppError.js';
 import { hashPassword, comparePassword } from '../utils/password.utils.js';
 import { generateToken } from '../utils/jwt.js';
+import {validateRegisterData, validateLoginData} from '../validations/users.validation.js';
 
 // Registrar un nuevo usuario
 export const registerUser = async (userData) => {
-    // Obtener los datos enviados desde el cliente
-    const { first_name, last_name, email, password } = userData ?? {};
-
-    // Validar los campos obligatorios
-    if (typeof first_name !== 'string' || !first_name.trim() || typeof last_name !== 'string' || !last_name.trim() || typeof email !== 'string' || !email.trim() || typeof password !== 'string' || !password) {
-        throw new AppError(
-            'Faltan campos obligatorios',
-            400
-        );
-    }
-
-    // Normalizar el correo electrónico
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Validar el formato del correo electrónico
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(normalizedEmail)) {
-        throw new AppError(
-            'El formato del correo electrónico no es válido',
-            400
-        );
-    }
-
-    // Validar la longitud mínima de la contraseña
-    if (password.length < 8) {
-        throw new AppError(
-            'La contraseña debe tener al menos 8 caracteres',
-            400
-        );
-    }
+    // Validar y normalizar los datos recibidos
+    const { firstName, lastName, email, password } =
+        validateRegisterData(userData);
 
     // Verificar si el correo electrónico ya está registrado
-    const existingUser = await usersRepository.getUserByEmail(
-        normalizedEmail
-    );
+    const existingUser = await usersRepository.getUserByEmail(email);
 
     if (existingUser) {
-        throw new AppError(
-            'El email ya está registrado',
-            409
-        );
+        throw new AppError('El email ya está registrado', 409);
     }
 
     // Generar el hash de la contraseña
     const hashedPassword = await hashPassword(password);
 
-    /// Crear el usuario en MongoDB
+    // Crear el usuario en MongoDB
     let newUser;
 
     try {
         newUser = await usersRepository.createUser({
-            firstName: first_name.trim(),
-            lastName: last_name.trim(),
-            email: normalizedEmail,
+            firstName,
+            lastName,
+            email,
             password: hashedPassword,
             role: 'user'
         });
     } catch (error) {
         // Controlar el error de email duplicado de MongoDB
         if (error.code === 11000) {
-            throw new AppError(
-                'El email ya está registrado',
-                409
-            );
+            throw new AppError('El email ya está registrado', 409);
         }
 
         // Propagar cualquier otro error
@@ -88,24 +53,11 @@ export const registerUser = async (userData) => {
 
 // Iniciar sesión de un usuario
 export const loginUser = async (userData) => {
-    // Obtener las credenciales enviadas por el cliente
-    const { email, password } = userData ?? {};
-
-    // Validar que las credenciales sean cadenas no vacías
-    if (
-        typeof email !== 'string' ||
-        !email.trim() ||
-        typeof password !== 'string' ||
-        !password
-    ) {
-        throw new AppError('Credenciales inválidas', 401);
-    }
-
-    // Normalizar el correo electrónico
-    const normalizedEmail = email.trim().toLowerCase();
+    // Validar y normalizar las credenciales recibidas
+    const { email, password } = validateLoginData(userData);
 
     // Buscar el usuario en MongoDB
-    const user = await usersRepository.getUserByEmail(normalizedEmail);
+    const user = await usersRepository.getUserByEmail(email);
 
     // Verificar que el usuario exista
     if (!user) {
@@ -130,8 +82,6 @@ export const loginUser = async (userData) => {
         role: user.role
     };
 
-    // Generar el token de autenticación
-    const token = generateToken(userPayload);
-
-    return token;
+    // Generar y devolver el token de autenticación
+    return generateToken(userPayload);
 };

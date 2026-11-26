@@ -1,4 +1,3 @@
-
 import Inscription from '../models/Inscription.js';
 
 // Obtener todas las inscripciones

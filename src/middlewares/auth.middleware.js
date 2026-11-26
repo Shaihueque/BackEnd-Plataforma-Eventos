@@ -1,10 +1,11 @@
 import { verifyToken } from '../utils/jwt.js';
 import { AppError } from '../utils/AppError.js';
+import { AUTH_COOKIE_NAME } from '../config/cookie.config.js';
 
 // Verificar la autenticación del usuario
 export const authMiddleware = (req, res, next) => {
     // Obtener el JWT almacenado en la cookie
-    const token = req.cookies?.currentUser;
+    const token = req.cookies?.[AUTH_COOKIE_NAME];
 
     // Rechazar solicitudes sin cookie de autenticación
     if (!token) {

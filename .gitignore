@@ -4,12 +4,9 @@ node_modules/
 # Variables de entorno
 .env
 .env.*
-.env.test
-.env.test.*
 
 # Plantillas permitidas
 !.env.example
-!.env.test.example
 
 # Archivos del sistema
 .DS_Store

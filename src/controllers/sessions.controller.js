@@ -1,5 +1,6 @@
 import * as usersService from '../services/users.service.js';
-import { env } from '../config/env.config.js';
+import { verifyToken } from '../utils/jwt.js';
+import {AUTH_COOKIE_NAME, authCookieOptions, getAuthCookieOptions} from '../config/cookie.config.js';
 
 // Obtener la ruta de sesiones
 export const getSessions = (req, res) => {
@@ -32,13 +33,15 @@ export const loginUser = async (req, res) => {
     // Validar las credenciales y generar el JWT mediante el servicio
     const token = await usersService.loginUser(userData);
 
-    // Guardar el JWT en una cookie de autenticación
-    res.cookie('currentUser', token, {
-        httpOnly: true,
-        sameSite: 'lax',
-        maxAge: 3600000,
-        secure: env.NODE_ENV === 'production'
-    });
+    // Obtener los datos verificados del token
+    const tokenPayload = verifyToken(token);
+
+    // Guardar el JWT en una cookie con expiración sincronizada
+    res.cookie(
+        AUTH_COOKIE_NAME,
+        token,
+        getAuthCookieOptions(tokenPayload)
+    );
 
     // Devolver la respuesta exitosa
     res.status(200).json({
@@ -66,12 +69,7 @@ export const currentUser = (req, res) => {
 // Cerrar la sesión del usuario
 export const logoutUser = (req, res) => {
     // Eliminar la cookie de autenticación
-    res.clearCookie('currentUser', {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: env.NODE_ENV === 'production',
-        path: '/'
-    });
+    res.clearCookie(AUTH_COOKIE_NAME, authCookieOptions);
 
     // Confirmar el cierre de sesión
     res.status(200).json({

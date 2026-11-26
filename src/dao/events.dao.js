@@ -21,7 +21,7 @@ export const updateEvent = async (id, eventData) => {
         id,
         eventData,
         {
-            new: true,
+            returnDocument: 'after',
             runValidators: true
         }
     );

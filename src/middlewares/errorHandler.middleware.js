@@ -16,15 +16,28 @@ export const errorHandler = (err, req, res, next) => {
 
     let message = err.message;
 
+    // Solicitudes con formato JSON inválido
+    if (err.type === 'entity.parse.failed') {
+        statusCode = 400;
+        message = 'El formato JSON de la solicitud no es válido';
+    }
+
     // Errores de validación de Mongoose
     if (err.name === 'ValidationError') {
         statusCode = 400;
+
         message = Object.values(err.errors)
-            .map(error => error.message)
+            .map(error => {
+                if (error.name === 'CastError') {
+                    return 'Uno de los valores proporcionados no es válido';
+                }
+
+                return error.message;
+            })
             .join(', ');
     }
 
-    // Identificadores inválidos de MongoDB
+    // Identificadores o valores inválidos de MongoDB
     if (err.name === 'CastError') {
         statusCode = 400;
         message = 'El identificador o valor proporcionado no es válido';
@@ -36,14 +49,15 @@ export const errorHandler = (err, req, res, next) => {
         message = 'Ya existe un registro con esos datos';
     }
 
-    // Registrar únicamente los errores inesperados
+    // Registrar únicamente los errores internos del servidor
     if (statusCode >= 500) {
         console.error('Error interno en la aplicación:', err);
     }
 
+    // Devolver una respuesta de error centralizada
     return res.status(statusCode).json({
         status: 'error',
-        message: statusCode === 500
+        message: statusCode >= 500
             ? 'Ocurrió un error interno en el servidor'
             : message || 'Ocurrió un error al procesar la solicitud'
     });

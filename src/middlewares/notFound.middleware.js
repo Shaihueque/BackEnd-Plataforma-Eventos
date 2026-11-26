@@ -1,7 +1,6 @@
+import { AppError } from '../utils/AppError.js';
+
 // Middleware para manejar rutas inexistentes
-export const notFound = (req, res) => {
-    return res.status(404).json({
-        status: 'error',
-        message: 'La ruta solicitada no existe'
-    });
+export const notFound = (req, res, next) => {
+    return next(new AppError('La ruta solicitada no existe', 404));
 };

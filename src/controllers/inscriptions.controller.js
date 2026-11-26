@@ -1,5 +1,5 @@
-
 import * as inscriptionsService from '../services/inscriptions.service.js';
+import { AppError } from '../utils/AppError.js';
 
 // Obtener todas las inscripciones
 export const getInscriptions = async (req, res) => {
@@ -18,12 +18,12 @@ export const getInscriptionById = async (req, res) => {
 
     const inscription = await inscriptionsService.getInscriptionById(id);
 
+    // Verificar que la inscripción exista
     if (!inscription) {
-        const error = new Error(
-            'La inscripción no existe o su identificador no es válido'
+        throw new AppError(
+            'La inscripción no existe o su identificador no es válido',
+            404
         );
-        error.statusCode = 404;
-        throw error;
     }
 
     return res.status(200).json({

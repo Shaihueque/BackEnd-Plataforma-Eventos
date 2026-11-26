@@ -5,18 +5,18 @@ const inscriptionSchema = new mongoose.Schema(
         user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: [true, 'El usuario es obligatorio']
         },
 
         event: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Event',
-            required: true
+            required: [true, 'El evento es obligatorio']
         },
 
         quantity: {
             type: Number,
-            required: true,
+            required: [true, 'La cantidad de entradas es obligatoria'],
             min: [1, 'La cantidad mínima de entradas es 1'],
             max: [4, 'La cantidad máxima de entradas por evento es 4'],
             validate: {

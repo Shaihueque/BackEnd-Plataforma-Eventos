@@ -37,7 +37,7 @@ const eventSchema = new mongoose.Schema(
 
         reservedTickets: {
             type: Number,
-            required: true,
+            required: [true, 'La cantidad de entradas reservadas es obligatoria'],
             default: 0,
             min: [0, 'Las entradas reservadas no pueden ser negativas'],
             validate: {
@@ -55,7 +55,7 @@ const eventSchema = new mongoose.Schema(
         organizer: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: [true, 'El organizador del evento es obligatorio']
         },
 
         status: {
