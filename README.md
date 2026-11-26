@@ -33,77 +33,73 @@ Akun Eventos nace con la idea de facilitar ese encuentro: que los organizadores 
 - **jsonwebtoken:** biblioteca utilizada para generar y verificar tokens JWT.
 - **cookie-parser:** middleware para interpretar cookies de las solicitudes HTTP.
 - **dotenv:** gestión de variables de entorno.
-- **Node.js Test Runner:** ejecución de pruebas automatizadas.
+- **CORS:** middleware para configurar el acceso desde otros orígenes.
 
 ## Estructura del proyecto
 
 ```text
-
 plataforma-eventos/
-│
 ├── src/
-│   ├── app.js
-│   ├── server.js
-│   │
-│   ├── config/
-│   │   ├── database.config.js
-│   │   └── env.config.js
-│   │
-│   ├── controllers/
-│   │   ├── health.controller.js
-│   │   ├── events.controller.js
-│   │   ├── sessions.controller.js
-│   │   └── inscriptions.controller.js
-│   │
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── Event.js
-│   │   └── Inscription.js
-│   │
-│   ├── routes/
-│   │   ├── health.router.js
-│   │   ├── events.router.js
-│   │   ├── sessions.router.js
-│   │   └── inscriptions.router.js
-│   │
-│   ├── services/
-│   │   ├── users.service.js
-│   │   ├── events.service.js
-│   │   └── inscriptions.service.js
-│   │
-│   ├── repositories/
-│   │   ├── users.repository.js
-│   │   ├── events.repository.js
-│   │   └── inscriptions.repository.js
-│   │
-│   ├── dao/
-│   │   ├── users.dao.js
-│   │   ├── events.dao.js
-│   │   └── inscriptions.dao.js
-│   │
-│   ├── middlewares/
-│   │   ├── auth.middleware.js
-│   │   ├── errorHandler.middleware.js
-│   │   └── notFound.middleware.js
-│   │
-│   └── utils/
-│       ├── AppError.js
-│       ├── jwt.js
-│       └── password.utils.js
-│
-├── tests/
-│   ├── auth.test.js
-│   ├── inscriptions.test.js
-│   ├── register.test.js
-│   └── transactions.test.js
+│   ├── app.js
+│   ├── server.js
+│   │
+│   ├── config/
+│   │   ├── cookie.config.js
+│   │   ├── database.config.js
+│   │   └── env.config.js
+│   │
+│   ├── controllers/
+│   │   ├── health.controller.js
+│   │   ├── events.controller.js
+│   │   ├── sessions.controller.js
+│   │   └── inscriptions.controller.js
+│   │
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Event.js
+│   │   └── Inscription.js
+│   │
+│   ├── routes/
+│   │   ├── health.router.js
+│   │   ├── events.router.js
+│   │   ├── sessions.router.js
+│   │   └── inscriptions.router.js
+│   │
+│   ├── services/
+│   │   ├── users.service.js
+│   │   ├── events.service.js
+│   │   └── inscriptions.service.js
+│   │
+│   ├── repositories/
+│   │   ├── users.repository.js
+│   │   ├── events.repository.js
+│   │   └── inscriptions.repository.js
+│   │
+│   ├── dao/
+│   │   ├── users.dao.js
+│   │   ├── events.dao.js
+│   │   └── inscriptions.dao.js
+│   │
+│   ├── middlewares/
+│   │   ├── auth.middleware.js
+│   │   ├── errorHandler.middleware.js
+│   │   └── notFound.middleware.js
+│   │
+│   ├── utils/
+│   │   ├── AppError.js
+│   │   ├── jwt.js
+│   │   ├── password.utils.js
+│   │   └── transaction.utils.js
+│   │
+│   └── validations/
+│       ├── users.validation.js
+│       └── inscriptions.validation.js
 │
 ├── .env.example
-├── .env.test.example
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
 └── README.md
-
 ```
 
 ## Arquitectura
@@ -117,7 +113,9 @@ El proyecto utiliza una estructura modular que separa las responsabilidades de l
 - **DAO:** operaciones de acceso a la base de datos.
 - **Models:** definición de las entidades principales del sistema.
 - **Middlewares:** procesamiento y validación de solicitudes.
-- **Config:** configuración general de la aplicación.
+- **Config:** configuración general de la aplicación, conexión a MongoDB y cookies de autenticación.
+- **Validations:** validación y normalización de los datos recibidos.
+- **Utils:** funciones reutilizables para contraseñas, JWT, errores personalizados y transacciones de MongoDB.
 
 ## Endpoints disponibles
 
@@ -132,40 +130,39 @@ Actualmente, la API cuenta con los siguientes endpoints:
 | POST | `/api/sessions/login` | Inicia sesión y establece la cookie JWT. |
 | GET | `/api/sessions/current` | Consulta el usuario autenticado mediante una cookie JWT válida. |
 | POST | `/api/sessions/logout` | Cierra la sesión y elimina la cookie del cliente. |
+| GET | `/api/inscriptions` | Consulta todas las inscripciones. |
+| GET | `/api/inscriptions/:id` | Consulta una inscripción por su identificador. |
+| POST | `/api/inscriptions` | Crea o reactiva una inscripción. |
+| PATCH | `/api/inscriptions/:id/cancel` | Cancela una inscripción y libera sus entradas. |
 
 ### Ejemplos de respuestas
 
 **GET `/api/health`**
 
 ```json
-
 {
-  "status": "ok",
-  "message": "Servidor activo"
+  "status": "ok",
+  "message": "Servidor activo"
 }
-
 ```
 
 **GET `/api/events`**
 
 ```json
-
 {
-  "status": "success",
-  "payload": []
+  "status": "success",
+  "message": "Eventos obtenidos correctamente",
+  "payload": []
 }
-
 ```
 
 **GET `/api/sessions`**
 
 ```json
-
 {
-  "status": "success",
-  "message": "Ruta de sesiones preparada"
+  "status": "success",
+  "message": "Ruta de sesiones preparada"
 }
-
 ```
 
 ### Registro seguro de usuarios
@@ -181,14 +178,12 @@ La plataforma permite registrar nuevos usuarios mediante un endpoint público qu
 La solicitud debe enviarse utilizando el formato JSON.
 
 ```json
-
 {
-  "first_name": "Ana",
-  "last_name": "Pérez",
-  "email": "Ana@Mail.com ",
-  "password": "Secreta123"
+  "first_name": "Ana",
+  "last_name": "Pérez",
+  "email": "Ana@Mail.com ",
+  "password": "Secreta123"
 }
-
 ```
 
 **Campos obligatorios:**
@@ -204,7 +199,7 @@ El endpoint `POST /api/sessions/register` recibe los campos `first_name` y `last
 
 Internamente, el modelo `User` de Mongoose utiliza `firstName` y `lastName`, siguiendo la convención **camelCase**.
 
-La conversión se realiza en la capa de servicios antes de guardar el usuario en MongoDB.
+La conversión se realiza en `src/validations/users.validation.js`, utilizado por la capa de servicios antes de guardar el usuario en MongoDB.
 
 Por lo tanto, las solicitudes enviadas desde Postman u otro cliente deben utilizar `first_name` y `last_name`, tal como se muestra en el ejemplo anterior.
 
@@ -235,18 +230,16 @@ Además, la respuesta del endpoint excluye tanto la contraseña original como su
 Cuando el registro se realiza correctamente, el servidor responde con el código HTTP `201 Created`.
 
 ```json
-
 {
-  "status": "success",
-  "payload": {
-    "id": "IDENTIFICADOR_GENERADO_POR_MONGODB",
-    "first_name": "Ana",
-    "last_name": "Pérez",
-    "email": "ana@mail.com",
-    "role": "user"
-  }
+  "status": "success",
+  "payload": {
+    "id": "IDENTIFICADOR_GENERADO_POR_MONGODB",
+    "first_name": "Ana",
+    "last_name": "Pérez",
+    "email": "ana@mail.com",
+    "role": "user"
+  }
 }
-
 ```
 
 #### Manejo de errores
@@ -264,12 +257,10 @@ El endpoint utiliza un middleware global para gestionar los errores y devolver r
 **Ejemplo de respuesta con error:**
 
 ```json
-
 {
-  "status": "error",
-  "message": "El email ya está registrado"
+  "status": "error",
+  "message": "El email ya está registrado"
 }
-
 ```
 
 #### Arquitectura del registro
@@ -278,7 +269,7 @@ El registro respeta la arquitectura por capas utilizada en el proyecto:
 
 1. **Ruta:** recibe la solicitud `POST /api/sessions/register`.
 2. **Controlador:** obtiene los datos y genera la respuesta HTTP.
-3. **Servicio:** realiza las validaciones, genera el hash y aplica las reglas de negocio.
+3. **Servicio:** delega las validaciones y la normalización en `users.validation.js`, genera el hash y aplica las reglas de negocio.
 4. **Repositorio:** abstrae las operaciones de acceso a los datos.
 5. **DAO:** ejecuta las operaciones mediante Mongoose.
 6. **Modelo:** define la estructura y las restricciones de los usuarios en MongoDB.
@@ -302,7 +293,7 @@ La persistencia de los datos se realiza en MongoDB Atlas y las contraseñas gene
 
 ## Autenticación de usuarios con JWT
 
-La plataforma incorpora autenticación mediante JSON Web Tokens (JWT). El inicio de sesión verifica las credenciales del usuario registrado y, si son correctas, genera un token firmado que contiene únicamente `id`, `email` y `role`. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con una duración de una hora y con `secure` habilitado en producción.
+La plataforma incorpora autenticación mediante JSON Web Tokens (JWT). El inicio de sesión verifica las credenciales del usuario registrado y, si son correctas, genera un token firmado que contiene únicamente `id`, `email` y `role`. El token se envía en la cookie `currentUser`, configurada como `httpOnly`, `sameSite: lax`, con `path: /`, una expiración sincronizada con la del JWT (una hora por defecto) y con `secure` habilitado en producción. La configuración se centraliza en `src/config/cookie.config.js`. Los tokens se firman y verifican mediante HS256.
 
 ### Configuración de autenticación
 
@@ -313,9 +304,9 @@ JWT_SECRET=REEMPLAZAR_POR_UNA_CLAVE_SEGURA
 JWT_EXPIRES_IN=1h
 ```
 
-`JWT_SECRET` es obligatorio para firmar y verificar tokens. `JWT_EXPIRES_IN` configura la duración del JWT y tiene el valor predeterminado `1h`. Los archivos `.env` y `.env.test` deben mantenerse fuera del repositorio. Para pruebas, se utiliza la configuración independiente de `.env.test` y la base de datos `akun_eventos_test`.
+`JWT_SECRET` es obligatorio para firmar y verificar tokens. `JWT_EXPIRES_IN` configura la duración del JWT y tiene el valor predeterminado `1h`. El archivo `.env` debe mantenerse fuera del repositorio.
 
-### Nuevos endpoints de sesiones
+### Endpoints de autenticación
 
 | Método | Endpoint | Descripción |
 |---|---|---|
@@ -330,34 +321,28 @@ JWT_EXPIRES_IN=1h
 Ejemplo de solicitud JSON:
 
 ```json
-
 {
-  "email": "ana@mail.com",
-  "password": "Secreta123"
+  "email": "ana@mail.com",
+  "password": "Secreta123"
 }
-
 ```
 
 Respuesta exitosa (`200 OK`):
 
 ```json
-
 {
-  "status": "success",
-  "message": "Login correcto"
+  "status": "success",
+  "message": "Login correcto"
 }
-
 ```
 
 La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo no existe o la contraseña es incorrecta, el servidor responde `401 Unauthorized` con el mismo mensaje genérico:
 
 ```json
-
 {
-  "status": "error",
-  "message": "Credenciales inválidas"
+  "status": "error",
+  "message": "Credenciales inválidas"
 }
-
 ```
 
 #### Consultar el usuario autenticado
@@ -367,28 +352,23 @@ La respuesta incluye una cabecera `Set-Cookie` para `currentUser`. Si el correo 
 El cliente debe enviar la cookie `currentUser` recibida en el inicio de sesión. Ejemplo de respuesta exitosa (`200 OK`):
 
 ```json
-
 {
-
-  "status": "success",
-  "payload": {
-    "id": "IDENTIFICADOR_DEL_USUARIO",
-    "email": "ana@mail.com",
-    "role": "user"
-  }
+  "status": "success",
+  "payload": {
+    "id": "IDENTIFICADOR_DEL_USUARIO",
+    "email": "ana@mail.com",
+    "role": "user"
+  }
 }
-
 ```
 
 La respuesta no incluye la contraseña ni su hash. Si la cookie falta, el token es inválido o ha expirado, responde `401 Unauthorized`:
 
 ```json
-
 {
-  "status": "error",
-  "message": "No autenticado"
+  "status": "error",
+  "message": "No autenticado"
 }
-
 ```
 
 #### Cerrar sesión
@@ -398,17 +378,35 @@ La respuesta no incluye la contraseña ni su hash. Si la cookie falta, el token 
 Respuesta exitosa (`200 OK`):
 
 ```json
-
 {
-  "status": "success",
-  "message": "Sesión cerrada"
+  "status": "success",
+  "message": "Sesión cerrada"
 }
-
 ```
 
 El servidor envía una instrucción para borrar la cookie `currentUser` del cliente. Esto **no revoca por sí solo** un JWT que ya se haya copiado: el token sigue siendo criptográficamente válido hasta su vencimiento, salvo que se implemente un mecanismo adicional de revocación.
 
 El middleware de autenticación verifica la cookie y asigna los datos del token a `req.user`. La utilidad JWT centraliza la firma y verificación de tokens. El manejador global de errores registra las trazas de los errores HTTP `500` y superiores, evitando registros extensos para errores controlados como `401`.
+
+## Gestión de inscripciones
+
+El módulo permite consultar, crear, reactivar y cancelar inscripciones a eventos publicados.
+
+- Cada usuario puede tener una única inscripción por evento.
+- La cantidad de entradas por inscripción debe ser un número entero entre 1 y 4.
+- Las inscripciones pendientes reservan entradas desde su creación.
+- La cancelación libera las entradas reservadas.
+- Una inscripción cancelada puede reactivarse reutilizando el registro existente.
+- La reserva de entradas utiliza operaciones atómicas y las operaciones de inscripción se ejecutan mediante transacciones de MongoDB, centralizadas en `src/utils/transaction.utils.js`.
+- Las validaciones de entrada se encuentran en `src/validations/inscriptions.validation.js`.
+
+Actualmente, las rutas de eventos e inscripciones no cuentan con autorización por roles. La ruta `/api/sessions/current` requiere autenticación.
+
+## Manejo centralizado de errores
+
+La clase `AppError` permite generar errores personalizados con su código HTTP. El middleware `notFound` deriva las rutas inexistentes al manejador global `errorHandler`, que construye las respuestas de error.
+
+El manejador contempla errores de validación y conversión de Mongoose, registros duplicados y solicitudes con JSON mal formado. Los errores internos del servidor se registran en la terminal y devuelven un mensaje genérico al cliente.
 
 ## Requisitos previos
 
@@ -423,28 +421,20 @@ Para ejecutar el proyecto necesitás tener instalado:
 Clonar el repositorio:
 
 ```bash
-
 git clone https://github.com/Shaihueque/BackEnd-Plataforma-Eventos.git
-
 ```
 
 Ingresar al directorio:
 
 ```bash
-
-cd plataforma-eventos
-
+cd BackEnd-Plataforma-Eventos
 ```
 
 Instalar las dependencias:
 
 ```bash
-
 npm install
-
 ```
-
-Crear un archivo `.env` en la raíz del proyecto, tomando como referencia `.env.example`.
 
 ## Variables de entorno
 
@@ -453,14 +443,11 @@ El proyecto utiliza variables de entorno para configurar el servidor y la conexi
 Crear un archivo `.env` en la raíz del proyecto tomando como referencia `.env.example`.
 
 ```env
-
 PORT=3000
 NODE_ENV=development
 MONGO_URL=
-
 JWT_SECRET=
 JWT_EXPIRES_IN=1h
-
 ```
 
 - **PORT:** puerto en el que se ejecuta el servidor.
@@ -474,107 +461,34 @@ JWT_EXPIRES_IN=1h
 Iniciar el servidor en modo desarrollo:
 
 ```bash
-
 npm run dev
-
 ```
 
 Iniciar el servidor:
 
 ```bash
-
 npm start
-
 ```
 
 Por defecto, la aplicación utiliza el puerto `3000`.
 
-## Pruebas automatizadas
+## Verificación funcional con Postman
 
-El proyecto incluye pruebas automatizadas desarrolladas con **Node.js Test Runner** para verificar la autenticación JWT, el registro seguro de usuarios, las inscripciones y las transacciones de MongoDB.
+Se realizaron verificaciones manuales de los endpoints existentes durante el desarrollo y las correcciones de la Pre-entrega 3.
 
-#### Configuración del entorno de pruebas
+| Operación | Código HTTP esperado |
+|---|---|
+| Estado del servidor | 200 OK |
+| Registro válido | 201 Created |
+| Inicio de sesión y consulta del usuario autenticado | 200 OK |
+| Consulta de eventos e inscripciones | 200 OK |
+| Cierre de sesión | 200 OK |
+| Acceso a `/current` sin autenticación | 401 Unauthorized |
+| Solicitud con JSON mal formado | 400 Bad Request |
+| Ruta inexistente | 404 Not Found |
+| Registro con correo duplicado | 409 Conflict |
 
-Antes de ejecutar las pruebas, crear un archivo `.env.test` en la raíz del proyecto utilizando como referencia `.env.test.example`.
-
-En Git Bash:
-
-```bash
-
-cp .env.test.example .env.test
-
-```
-
-Configurar las variables de entorno con los valores correspondientes:
-
-```env
-
-NODE_ENV=test
-PORT=3001
-MONGO_URL=mongodb+srv://USUARIO:CONTRASENA@CLUSTER.mongodb.net/akun_eventos_test
-
-JWT_SECRET=clave_de_pruebas_reemplazar
-JWT_EXPIRES_IN=1h
-
-```
-
-La variable `MONGO_URL` debe contener una cadena de conexión válida a MongoDB Atlas y apuntar exclusivamente a la base de datos `akun_eventos_test`.
-
-**Importante:** las pruebas crean y eliminan documentos temporales. No deben ejecutarse utilizando la base de datos de desarrollo o producción.
-
-El archivo `.env.test` contiene configuración privada y está excluido del repositorio mediante `.gitignore`. Únicamente se publica `.env.test.example` como plantilla, sin credenciales reales.
-
-#### Ejecutar las pruebas
-
-Desde la raíz del proyecto:
-
-```bash
-
-npm test
-
-```
-
-Este comando ejecuta los archivos de pruebas ubicados en `tests/`, utilizando las variables definidas en `.env.test`.
-
-#### Pruebas disponibles
-
-- `auth.test.js`: verifica el inicio de sesión con JWT, la cookie de autenticación, el acceso a `/current`, el cierre de sesión y el rechazo de credenciales incorrectas, tokens inválidos y expirados.
-
-- `register.test.js`: verifica el registro exitoso, la normalización del email, la protección de contraseñas con bcrypt, el rol predeterminado y los errores HTTP `400` y `409`.
-
-- `inscriptions.test.js`: comprueba las reglas de inscripción, capacidad, cancelación, reactivación y reservas simultáneas.
-
-- `transactions.test.js`: verifica el funcionamiento de las transacciones de MongoDB.
-
-Las pruebas utilizan una base de datos independiente y eliminan los documentos temporales que generan.
-
-En la última ejecución local de la suite completa se obtuvieron **22 pruebas aprobadas y 0 fallidas** (9 de autenticación, 6 de registro, 6 de inscripciones y 1 de transacciones).
-
-### Pruebas de autenticación
-
-El archivo `tests/auth.test.js` incorpora pruebas de integración que verifican:
-
-- Login correcto y generación de cookie JWT.
-- Acceso autorizado a `/current` con un token válido.
-- Rechazo de acceso sin cookie, con token inválido o expirado.
-- Logout y eliminación de la cookie en la respuesta.
-- Rechazo de contraseñas incorrectas y correos inexistentes, sin generar cookies.
-
-Para ejecutar únicamente las pruebas de autenticación:
-
-```bash
-
-node --env-file=.env.test --test tests/auth.test.js
-
-```
-
-Para ejecutar todas las pruebas:
-
-```bash
-
-npm test
-
-```
+También se realizaron comprobaciones manuales de creación, cancelación y reactivación de inscripciones, así como del control de capacidad y la reserva y liberación de entradas.
 
 ## Autor
 
